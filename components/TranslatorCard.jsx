@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import LanguageSelect from "./LanguageSelect";
 import TextInput from "./TextInput";
 import TranslateButton from "./TranslateButton";
+import VoiceButton from "./VoiceButton";
 
 export default function TranslatorCard() {
   const [text, setText] = useState("");
@@ -12,6 +13,7 @@ export default function TranslatorCard() {
   const [loading, setLoading] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [speed, setSpeed] = useState(1);
 
   // Load Dark mode to localstorage
   useEffect(() => {
@@ -94,6 +96,40 @@ export default function TranslatorCard() {
     }
   };
 
+  // Speak translated text
+  const speakTranslation = () => {
+    if (!translated) return;
+
+    const utterance = new SpeechSynthesisUtterance(translated);
+    const voices = window.speechSynthesis.getVoices();
+
+    const nigerianLangs = ["ig", "ha", "yo"];
+
+    let selectedVoice = null;
+
+    if (nigerianLangs.includes(toLang)) {
+      selectedVoice = voices.find(
+        (voice) =>
+          voice.lang.toLowerCase().includes("ng") ||
+          voice.name.toLowerCase().includes("nigeria")
+      );
+    }
+
+    if (!selectedVoice) {
+      selectedVoice = voices.find((voice) =>
+        voice.lang.toLowerCase().startsWith(toLang)
+      );
+    }
+
+    if (selectedVoice) {
+      utterance.voice = selectedVoice;
+    }
+
+    utterance.rate = speed;
+
+    window.speechSynthesis.speak(utterance);
+  };
+
   // Auto Translate when user stops typing
   useEffect(() => {
     if (!text) {
@@ -114,9 +150,14 @@ export default function TranslatorCard() {
     { code: "es", name: "Spanish" },
     { code: "fr", name: "French" },
     { code: "sv", name: "Swedish" },
+
+    // Nigerian Languages
+    { code: "ig", name: "Igbo" },
+    { code: "ha", name: "Hausa" },
+    { code: "yo", name: "Yoruba" },
   ]
 
-  // UI 
+  // ====USER INTERFACE====
   return (
     <div className={`w-full max-w-xl mx-4 sm:mx-0 p-4 sm:p-6 rounded-xl shadow-md transition-colors
         ${darkMode ? "bg-gray-800 text-white" : "bg-white text-black"}
@@ -140,6 +181,29 @@ export default function TranslatorCard() {
         >
           {darkMode ? "🌞" : "🌙"}
         </button>
+
+        {/* Voice speed control */}
+        <div className="mb-4">
+          <label className="block text-sm mb-1">
+            Voice Speed
+          </label>
+
+          <select
+            value={speed}
+            onChange={(e) => setSpeed(parseFloat(e.target.value))}
+            className={`w-full p-2 rounded-lg border cursor-pointer
+                ${
+                  darkMode
+                    ? "bg-gray-700 border-gray-600 text-white"
+                    : "bg-white border-gray-300 text-black"
+                }
+            `}
+          >
+              <option value="0.7">Slow</option>
+              <option value="1">Normal</option>
+              <option value="1.3">Fast</option>
+          </select>
+        </div>
       </div>
 
       {/* Language Selectors */}
@@ -173,12 +237,25 @@ export default function TranslatorCard() {
         />
       </div>
 
-      {/* Text Input */}
-      <TextInput 
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        darkMode={darkMode}
-      />
+      {/* Text Input + Voice */}
+      <div className="flex gap-2 items-start">
+        <div className="flex-1">
+          <TextInput 
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            darkMode={darkMode}
+          />
+        </div>
+
+        <VoiceButton 
+          darkMode={darkMode}
+          onResult={(spokenText) => 
+            setText((prev) => 
+              prev ? prev + " " + spokenText : spokenText)
+          }
+        />
+      </div>
+      
 
       {/* Translate Button */}
       <TranslateButton
@@ -196,33 +273,51 @@ export default function TranslatorCard() {
             Translated ({fromLang} → {toLang})
           </p>
 
-          <button
-            onClick={copyTranslation}
-            className={`p-2 rounded-full cursor-pointer
-              ${
-                darkMode
-                  ? "bg-gray-600 hover:bg-gray-500 text-gray-200"
-                  : "bg-gray-200 hover:bg-gray-300 text-gray-700"
-              }`
-            }
-            title="Copy translation"
-          >
-            {copied ? (
-              <span className="text-sm">copied!</span>
-            ) : (
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <rect x="8" y="9" width="12" height="14" rx="2" />
-                <rect x="2" y="2" width="12" height="14" rx="2" />
-              </svg>
-            )}
-          </button>
+          <div className="flex gap-2">
+            {/* Speak Button */}
+            <button
+              onClick={speakTranslation}
+              className={`p-2 rounded-full cursor-pointer
+                ${
+                  darkMode
+                    ? "bg-gray-600 hover:bg-gray-500 text-gray-200"
+                    : "bg-gray-200 hover:bg-gray-300 text-gray-700"
+                }
+              `}
+              title="Listen"
+            >
+              🔊
+            </button>
+
+            {/* Copy Button */}
+            <button
+              onClick={copyTranslation}
+              className={`p-2 rounded-full cursor-pointer
+                ${
+                  darkMode
+                    ? "bg-gray-600 hover:bg-gray-500 text-gray-200"
+                    : "bg-gray-200 hover:bg-gray-300 text-gray-700"
+                }`
+              }
+              title="Copy translation"
+            >
+              {copied ? (
+                <span className="text-sm">copied!</span>
+              ) : (
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <rect x="8" y="9" width="12" height="14" rx="2" />
+                  <rect x="2" y="2" width="12" height="14" rx="2" />
+                </svg>
+              )}
+            </button>
+          </div>
         </div>
 
         <p className="leading-relaxed whitespace-pre-wrap break-words">
